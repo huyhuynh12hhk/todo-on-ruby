@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  postgresrb:
+    image: postgres:latest
+    container_name: postgresrb
+    ports:
+      - '5322:5432'
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    networks:
+      - rb-todo
+
+
+networks:
+  rb-todo:
+    driver: bridge

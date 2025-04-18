@@ -1,0 +1,1 @@
+## This is a simple To do application built with Ruby on Rails backend API and ReactJS for frontend.
