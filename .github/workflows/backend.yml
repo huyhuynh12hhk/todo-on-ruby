@@ -1,0 +1,119 @@
+name: Backend Assurance
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - "todo-on-server/**"
+      - ".github/workflows/backend.yml"
+
+
+jobs:
+  scan_ruby:
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/toolcache
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: todo-on-server
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+          working-directory: todo-on-server
+
+      - name: Scan for common Rails security vulnerabilities using static analysis
+        run: |
+          ruby bin/brakeman --no-pager
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/toolcache
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: todo-on-server
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+          working-directory: todo-on-server
+
+      - name: Lint code for consistent style
+        run: |
+          ruby bin/rubocop -f github
+#         bundle exec rubocop --format github -a
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/toolcache
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: test_postgresql
+          POSTGRES_PASSWORD: test_postgresql
+        ports:
+          - 5322:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: todo-on-server
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev pkg-config
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+          working-directory: todo-on-server
+
+      # - name: Wait for Postgres
+      #   run: |
+      #     until pg_isready -h localhost -p 5322 -U ${{ secrets.DB_USER }}; do
+      #       echo "Waiting for Postgres..."
+      #       sleep 3
+      #     done
+
+      - name: Run tests
+        env:
+          RAILS_ENV: test
+          # DATABASE_URL: postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5322
+          DB_USER: test_postgresql
+          DB_PASSWORD: test_postgresql
+          DB_HOST: localhost
+          DB_PORT: 5322
+        run: |
+          gem install bundler
+          bundle install
+          bundle exec rails db:create db:schema:load --trace
+          bundle exec rails test

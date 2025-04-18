@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  title: "Task 1"
+  content: "Description for task 1"
+  status: false
+  user: one
+
+two:
+  title: "Task 2"
+  content: "Details for task 2"
+  status: true
+  user: two
